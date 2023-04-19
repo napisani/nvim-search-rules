@@ -83,7 +83,7 @@ local config_opts = {
 
 search_rules = require('nvim-search-rules')
 
--- returns a list of args that can be passed directly to `rg`
+-- returns a list of arguments that can be passed directly to `rg`
 iglob_args_for_rg = search_rules.get_ignore_globs_as_rg_args(config)
 
 ```
