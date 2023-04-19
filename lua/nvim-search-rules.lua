@@ -1,10 +1,13 @@
 local M = {}
 
+-- trim whitespace before and after the string 
+local function trim(s)
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
 local function clean_glob(glob)
 	-- remove comments
 	glob = glob:gsub("#.*", "")
-	-- trim whitespace before and after the glob
-	glob = glob:gsub("^%s+", ""):gsub("%s+$", "")
+	glob = trim(glob)
 	if glob == "" then
 		return nil
 	end
@@ -89,15 +92,34 @@ local function get_ignore_globs_for_filename(ignore_file, root_dir)
 	end
 	return ignore_globs
 end
+local function get_relative_path_from_root(root_dir, path)
+	local relative_path = path:sub(root_dir:len() + 1)
+	if relative_path:sub(0, 1) == "/" then
+		relative_path = relative_path:sub(2)
+	end
+	return relative_path
+end
 
----@param ignore_from_files table of strings - the names of files with ignore glob definitions, in order they should be applied
----@param root_dir string - the root directory to search for ignore files - typically the project root
-M.get_ignore_globs = function(ignore_from_files, root_dir)
+---@class Config
+---@field ignore_from_files table of strings - the names of files with ignore glob definitions, in order they should be applied
+---@field root_dir string - the root directory to search for ignore files - typically the project root. If not provided, the cwd will be used
+---@field cwd string - the directory where the search should be performed - the default will be the vim.fn.getcwd()
+---@field additional_ignore_globs table of string - globs that should always be ignored, regardless of the ignore files
+
+local Config = {}
+M.get_ignore_globs = function(config)
+  local additional_ignore_globs = config.additional_ignore_globs or {}
+	local ignore_from_files = config.ignore_from_files
 	if not ignore_from_files then
 		ignore_from_files = { ".gitignore", ".nvimignore" }
 	end
+	local cwd = config.cwd
+	if not cwd then
+		cwd = vim.fn.getcwd()
+	end
+	local root_dir = config.root_dir
 	if not root_dir then
-		root_dir = vim.fn.getcwd()
+		root_dir = cwd
 	end
 	local ignore_globs = {}
 	for _, ignore_file in ipairs(ignore_from_files) do
@@ -114,15 +136,24 @@ M.get_ignore_globs = function(ignore_from_files, root_dir)
 		end
 	end
 	local final_ignore_globs = {}
+	local relative_path = get_relative_path_from_root(root_dir, cwd)
 	for glob, should_ignore in pairs(ignore_globs) do
 		if should_ignore then
-			table.insert(final_ignore_globs, remove_path_prefix_from_glob(root_dir, glob))
+			local glob_without_path = remove_path_prefix_from_glob(root_dir, glob)
+			if trim(relative_path) ~= "" then
+				glob_without_path = remove_path_prefix_from_glob(relative_path, glob_without_path)
+			end
+			table.insert(final_ignore_globs, glob_without_path)
 		end
 	end
+  for _, ignore_glob in ipairs(additional_ignore_globs) do
+    table.insert(final_ignore_globs, ignore_glob)
+  end
+
 	return final_ignore_globs
 end
-M.get_ignore_globs_as_rg_args = function(ignore_from_files, root_dir)
-	local ignore_globs = M.get_ignore_globs(ignore_from_files, root_dir)
+M.get_ignore_globs_as_rg_args = function(config)
+	local ignore_globs = M.get_ignore_globs(config)
 	local ignore_globs_as_rg_args = {}
 	for _, ignore_glob in ipairs(ignore_globs) do
 		table.insert(ignore_globs_as_rg_args, "--iglob")
