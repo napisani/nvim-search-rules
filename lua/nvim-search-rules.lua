@@ -7,12 +7,14 @@ end
 local function clean_glob(glob)
 	-- remove comments
 	glob = glob:gsub("#.*", "")
+  -- trim whitespace
 	glob = trim(glob)
 	if glob == "" then
 		return nil
 	end
 	return glob
 end
+
 
 local function find_files_with_name(name, root_dir)
 	if not root_dir then
@@ -81,7 +83,7 @@ end
 local function is_exists_in_set(set, value)
 	return set[value] == true
 end
-local function get_ignore_globs_for_filename(ignore_file, root_dir)
+local function get_ignore_globs_for_filename(ignore_file, root_dir, find_files_fn)
 	local ignore_globs = {}
 	local ignore_file_paths = find_files_with_name(ignore_file, root_dir)
 	for _, ignore_file_path in ipairs(ignore_file_paths) do
@@ -105,8 +107,11 @@ end
 ---@field root_dir string - the root directory to search for ignore files - typically the project root. If not provided, the cwd will be used
 ---@field cwd string - the directory where the search should be performed - the default will be the vim.fn.getcwd()
 ---@field additional_ignore_globs table of string - globs that should always be ignored, regardless of the ignore files
+---@field find_files_with_name function - a function that takes a filename and a root directory and returns a list of files with that name by traversing 
+--- the directory tree from the root directory. If not passed, the default implementation will use ripgrep to find files with the given name
 
 local Config = {}
+---@param config Config the configuration options object
 M.get_ignore_globs = function(config)
   local additional_ignore_globs = config.additional_ignore_globs or {}
 	local ignore_from_files = config.ignore_from_files
@@ -121,9 +126,10 @@ M.get_ignore_globs = function(config)
 	if not root_dir then
 		root_dir = cwd
 	end
+  local find_files_fn = config.find_files_with_name or find_files_with_name
 	local ignore_globs = {}
 	for _, ignore_file in ipairs(ignore_from_files) do
-		local ignore_globs_for_file = get_ignore_globs_for_filename(ignore_file, root_dir)
+		local ignore_globs_for_file = get_ignore_globs_for_filename(ignore_file, root_dir, find_files_fn)
 		for _, ignore_glob in ipairs(ignore_globs_for_file) do
 			if is_a_negated_glob(ignore_glob) then
 				local unnegated_glob = unnegate_glob(ignore_glob)
@@ -152,6 +158,8 @@ M.get_ignore_globs = function(config)
 
 	return final_ignore_globs
 end
+
+---@param config Config the configuration options object
 M.get_ignore_globs_as_rg_args = function(config)
 	local ignore_globs = M.get_ignore_globs(config)
 	local ignore_globs_as_rg_args = {}
@@ -162,4 +170,10 @@ M.get_ignore_globs_as_rg_args = function(config)
 	return ignore_globs_as_rg_args
 end
 
+function M.table_merge(t1, t2)
+	for _, v in ipairs(t2) do
+		table.insert(t1, v)
+	end
+	return t1
+end
 return M
