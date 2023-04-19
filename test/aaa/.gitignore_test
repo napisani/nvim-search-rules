@@ -1,0 +1,2 @@
+#ignore bar only in the `aaa` dir
+bar
