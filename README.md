@@ -50,22 +50,24 @@ local function find_files_with_name(name, root_dir)
 end
 
 local config_opts = {
-  -- A list of files to search for recursively within any project
-  -- ignore rules in the latter files take precedence over the former files.
+  -- A list of files to search recursively within any project.
+  -- Ignore rules in the latter files take precedence over the former files.
   -- For example, if .gitignore has a global rule like `*.env` but 
   -- .nvimignore has a rule like `!*.env`, then all .env files 
   -- will be INCLUDED in the search. (.nvimignore has the ability 
   -- to negate the glob rules in .gitingnore files because they are defined second in the list)
   -- (Optional), Default = { '.gitignore', '.nvimignore' }
-	ignore_from_files = { 
+  ignore_from_files = { 
     ".gitignore", 
     ".nvimignore" 
   },
-  -- these are  any globs include regardless of what is found in any of the `ignore_from_files` files. 
-  -- in other words any rules defined here will always be ignored from searches
+
+  -- These are any globs to include regardless of what is found in any of the `ignore_from_files` files. 
+  -- In other words, any rules defined here will always be ignored from searches.
   -- (Optional), Default = {}
   additional_ignore_globs = { "node_modules", ".git", "dist", ".idea", ".vscode" },
-  -- this is the absolute path to the root of the project. 
+
+  -- This is the absolute path to the root of the project. 
   -- (Optional), Default = the current working directory - IE: the result of `vim.fn.getcwd()`
 	root_dir = vim.fn.getcwd() 
 
@@ -75,7 +77,7 @@ local config_opts = {
   cwd = vim.fn.getcwd() 
  
   -- This is a function that takes a filename and the absolute path to the root of the project and returns a 
-  -- list containing absolute paths to all files found with that filename recursively found within the project directory.
+  -- list containing absolute paths to all files found with that filename recursively within the project directory.
   -- This option is primarily provided for anyone NOT using `rg`. If you are using `rg` 
   -- you shouldn't need to define this configuration key.
   find_files_with_name = find_files_with_name 
@@ -143,5 +145,5 @@ end
 -- search for files by name
 vim.keymap.set("n", "<leader>ft", find_files_from_root, {})
 -- search for files by grep'ing contents
-vim.keymap.set("n", "<leader>fh", find_files_from_root, {})
+vim.keymap.set("n", "<leader>fh", live_grep_from_root, {})
 ```
